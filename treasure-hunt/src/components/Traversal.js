@@ -45,7 +45,8 @@ export default class Traversal extends React.Component {
       roomData: {},
       graph: {},
       path: [],
-      items: []
+      items: [],
+      value: null
     };
   }
   //====================== TRAVERSAL FUNCTIONS ======================
@@ -69,7 +70,8 @@ export default class Traversal extends React.Component {
           Authorization: myToken
         },
         data: {
-          direction: move
+          direction: move,
+          next_room_id: this.state.value
         }
       });
       let prev_room_id = this.state.room_id;
@@ -180,11 +182,11 @@ export default class Traversal extends React.Component {
         console.log(err);
       });
   };
-  getItem = async() => {
+  getItem = async () => {
     let {treasure} = this.state.items
-    if(this.state.items.length){
+    
       try {
-        const response = await axios({
+        await axios({
           method: "post",
           url: "https://lambda-treasure-hunt.herokuapp.com/api/adv/take/",
           headers: {
@@ -196,8 +198,11 @@ export default class Traversal extends React.Component {
         });
     } catch (err){
       console.log(err)
-    }
-    }
+    
+    } 
+  }
+  handleChange = (event) => {
+    this.setState({value: event.target.value});
   }
   render() {
     return (
@@ -211,6 +216,15 @@ export default class Traversal extends React.Component {
         <Button onClick={() => this.travel('w')}>West</Button>
         <Button onClick={() => this.traverseMap()}>AutoTraverse</Button>
         <Button onClick={() => this.getItem()}>Pick Up Treasure</Button>
+
+        <form>
+        <label>
+          Next Room ID: 
+          <input type="Number" value={this.state.value} onChange={this.handleChange} />
+        </label>
+      </form>
+
+        
       </React.Fragment>
     );
   }
