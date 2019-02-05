@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import "./App.css";
-import DisplayContainer from "./components/displayContainer";
+import Traversal from "./components/Traversal";
 
 
 
@@ -9,7 +9,7 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        <DisplayContainer/>
+        <Traversal/>
       </div>
     );
   }

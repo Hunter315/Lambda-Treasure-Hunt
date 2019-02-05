@@ -1,7 +1,25 @@
 import React from 'react';
 
-export default class graphMap extends React.Component{
+
+export default class GraphMap extends React.Component{
     constructor(props){
         super(props);
+    }//end constructor
+
+     
+
+
+
+
+
+
+
+    render(){
+        return(
+
+            <div>
+
+            </div>
+        )
     }
 }
