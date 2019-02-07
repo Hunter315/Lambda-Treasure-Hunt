@@ -4,10 +4,7 @@ import React from "react";
 // import GraphMap from "./components/graphMap";
 
 export default class DisplayContainer extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
+  
   render() {
     return (
       <React.Fragment>

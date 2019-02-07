@@ -3,26 +3,8 @@ import DisplayContainer from "./DisplayContainer";
 import myToken from "../tokens/secretTokens";
 import axios from "axios";
 import styled from "styled-components";
-import { isNull } from "util";
-
-const Button = styled.button`
-
-border-radius: 5px;
-  padding: 15px 25px;
-  font-size: 22px;
-  text-decoration: none;
-  margin: 20px;
-  color: #fff;
-  position: relative;
-  display: inline-block;
-  }
-  
-  ${Button}:hover & {
-    background-color: #6FC6FF;
-  }
-`;
-
-const myUrl = process.env.BASE_URL;
+import GraphMap from "./GraphMap";
+import data from './data.json'
 // My personal token is config
 const config = {
   headers: { Authorization: myToken }
@@ -33,7 +15,9 @@ export default class Traversal extends React.Component {
 
     this.state = {
       // initialize state of room, items, directions, player, etc
-      coordinates: {},
+      allCoordinates: [],
+      allLinks: [],
+      mapCoords: [],
       exits: [],
       room_id: 0,
       title: "",
@@ -48,16 +32,28 @@ export default class Traversal extends React.Component {
       items: [],
       value: "",
       visited: new Set(),
-      countVisited: 0
+      countVisited: 0,
+      graphLoaded: false,
     };
   }
   //====================== TRAVERSAL FUNCTIONS ======================
   componentDidMount() {
+  
     if (localStorage.hasOwnProperty("graph")) {
       let value = JSON.parse(localStorage.getItem("graph"));
-      this.setState({ graph: value });
+      this.setState({ graph: value, graphLoaded: true });
+    } else {
+      localStorage.setItem('graph', JSON.stringify(data));
+      let value = JSON.parse(localStorage.getItem('graph'));
+      this.setState({ graph: value, graphLoaded: true });
     }
     this.getInfo();
+  }
+  componentDidUpdate(prevState) {
+    if (!this.state.allCoordinates.length && this.state.graph) {
+      this.mapLinks();
+      this.mapCoordinates();
+    }
   }
   //----- INITIALIZE GRAPH -----
 
@@ -67,7 +63,7 @@ export default class Traversal extends React.Component {
     if (next_room_id !== null) {
       data = {
         direction: move,
-        next_room_id: toString(next_room_id)
+        next_room_id: next_room_id.toString()
       };
     } else {
       data = {
@@ -114,7 +110,7 @@ export default class Traversal extends React.Component {
 
   updateGraph = (id, coordinates, exits, prev_room_id = null, move = null) => {
     const { reverseDirection } = this.state;
-    let graph = Object.assign({}, this.state.graph);
+    let graph = Object.assign(this.state.graph);
     if (!this.state.graph[id]) {
       let payload = [];
       payload.push(coordinates);
@@ -135,31 +131,55 @@ export default class Traversal extends React.Component {
 
   //---trying other method---
   traverseMap = () => {
+    let count = 1;
     let unknownExits = this.getUnknownExits();
     if (unknownExits.length) {
       let move = unknownExits[0];
       this.travel(move);
     } else {
-      clearInterval(this.interval);
       let path = this.bft();
-      let count = 1;
-      for (let direction of path) {
-        for (let d in direction) {
-          setTimeout(() => {
-            this.travel(d);
-          }, this.state.cooldown * 1000 * count);
-          count = count + 1;
+
+      if (typeof path === "string") {
+      } else {
+        for (let direction of path) {
+          for (let d in direction) {
+            setTimeout(() => {
+              this.travel(d, direction[d]);
+            }, 15 * 1000 * count + 1000);
+            count++;
+          }
+        }
+        if (this.state.visited.size < 499) {
+          setTimeout(
+            this.traverseMap(),
+            this.state.cooldown * 1000 * count + 1000
+          );
+          this.updateVisited();
+          count = 1;
+        } else {
+          console.log("Something went wrong");
         }
       }
-      this.interval = setInterval(
-        this.traverseMap,
-        this.state.cooldown * 1000 * count
-      );
-      count = 1;
     }
-    this.updateVisited();
   };
-
+  mapCoordinates = () => {
+    const { graph } = this.state;
+    const setCoordinates = [];
+    for (let room in graph) {
+      setCoordinates.push(graph[room][0]);
+    }
+    this.setState({ allCoordinates: setCoordinates });
+  };
+  mapLinks = () => {
+    const { graph } = this.state;
+    const setLinks = [];
+    for(let room in graph){
+      for (let linkedRoom in graph[room][1]) {
+        setLinks.push([graph[room][0], graph[graph[room][1][linkedRoom]][0]]);
+      }
+    } 
+    this.setState({ allLinks: setLinks});
+  }
   updateVisited = () => {
     let visited = new Set(this.state.set);
     for (let key in this.state.graph) {
@@ -212,7 +232,7 @@ export default class Traversal extends React.Component {
         );
         if (res.status === 200 && res.data) {
           console.log(res);
-          this.setState({
+          this.setState(prevState => ({
             coordinates: res.data.coordinates,
             exits: [...res.data.exits],
             room_id: res.data.room_id,
@@ -223,7 +243,7 @@ export default class Traversal extends React.Component {
             errors: res.data.errors,
             roomData: res.data,
             graph
-          });
+          }));
           this.updateVisited();
         }
       })
@@ -250,6 +270,7 @@ export default class Traversal extends React.Component {
     }
   };
   handleChange = event => {
+    event.preventDefault();
     this.setState({ value: event.target.value });
   };
 
@@ -272,8 +293,8 @@ export default class Traversal extends React.Component {
         } else {
           visited.add(last_room[exit]);
 
-          for (let path in graph[last_room[exit][1]]) {
-            if (visited.has(graph[last_room[exit][1][path]]) === false) {
+          for (let path in graph[last_room[exit]][1]) {
+            if (visited.has(graph[last_room[exit]][1][path]) === false) {
               let path_copy = Array.from(dequeued);
               path_copy.push({ [path]: graph[last_room[exit]][1][path] });
 
@@ -284,10 +305,13 @@ export default class Traversal extends React.Component {
       }
     }
   };
+
   handleClick = () => {
-    this.interval = setInterval(this.traverseMap, this.state.cooldown * 1000);
+    this.traverseMap();
   };
   render() {
+    const { graph } = this.state
+    console.log("graph", graph)
     return (
       <React.Fragment>
         <DisplayContainer {...this.state} />
@@ -299,6 +323,8 @@ export default class Traversal extends React.Component {
         <Button onClick={() => this.travel("w")}>West</Button>
         <Button onClick={() => this.handleClick()}>AutoTraverse</Button>
         <Button onClick={() => this.getItem()}>Pick Up Treasure</Button>
+        { graph ? <GraphMap coordinates={this.state.allCoordinates} links={this.state.allLinks}/> : <div><p>graph loading</p></div> }
+        
 
         <form>
           <label>
@@ -314,3 +340,19 @@ export default class Traversal extends React.Component {
     );
   }
 }
+const Button = styled.button`
+
+border-radius: 5px;
+  padding: 15px 25px;
+  font-size: 22px;
+  text-decoration: none;
+  margin: 20px;
+  color: #fff;
+  position: relative;
+  display: inline-block;
+  }
+  
+  ${Button}:hover & {
+    background-color: #6FC6FF;
+  }
+`;
