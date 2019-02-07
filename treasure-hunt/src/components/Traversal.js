@@ -133,6 +133,7 @@ export default class Traversal extends React.Component {
   traverseMap = () => {
     let count = 1;
     let unknownExits = this.getUnknownExits();
+    console.log("unknown exits", unknownExits)
     if (unknownExits.length) {
       let move = unknownExits[0];
       this.travel(move);
@@ -141,6 +142,7 @@ export default class Traversal extends React.Component {
 
       if (typeof path === "string") {
       } else {
+        console.log("path",path)
         for (let direction of path) {
           for (let d in direction) {
             setTimeout(() => {
@@ -304,6 +306,7 @@ export default class Traversal extends React.Component {
         }
       }
     }
+    return 'doesnt exist';
   };
 
   handleClick = () => {
@@ -311,7 +314,7 @@ export default class Traversal extends React.Component {
   };
   render() {
     const { graph } = this.state
-    console.log("graph", graph)
+    // console.log("graph", graph)
     return (
       <React.Fragment>
         <DisplayContainer {...this.state} />
